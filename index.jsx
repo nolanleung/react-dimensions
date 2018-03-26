@@ -159,7 +159,7 @@ module.exports = function Dimensions ({
         const {containerWidth, containerHeight} = this.state
         if (this._parent && !containerWidth && !containerHeight) {
           // only trigger a warning about the wrapper div if we already have a reference to it
-          console.warn('Wrapper div has no height or width, try overriding style with `containerStyle` option')
+          // console.warn('Wrapper div has no height or width, try overriding style with `containerStyle` option')
         }
         const wrapperStyle = {
           overflow: 'visible',
