@@ -10,12 +10,22 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var _debounce = require('lodash.debounce');
 var React = require('react');
 var onElementResize = require('element-resize-event');
 
-function defaultGetDimensions(element) {
-  return [element.clientWidth, element.clientHeight];
+var defaultContainerStyle = {
+  width: '100%',
+  height: '100%',
+  padding: 0,
+  border: 0
+};
+
+function defaultGetWidth(element) {
+  return element.clientWidth;
+}
+
+function defaultGetHeight(element) {
+  return element.clientHeight;
 }
 
 /**
@@ -34,12 +44,6 @@ function defaultGetDimensions(element) {
  * height, where element is the wrapper div. Defaults to `(element) => element.clientHeight`
  * @param {function} [options.getWidth]  A function that is passed an element and returns element
  * width, where element is the wrapper div. Defaults to `(element) => element.clientWidth`
- * @param {number} [options.debounce] Optionally debounce the `onResize` callback function by
- * supplying the delay time in milliseconds. This will prevent excessive dimension
- * updates. See
- * https://lodash.com/docs#debounce for more information. Defaults to `0`, which disables debouncing.
- * @param {object} [options.debounceOpts] Options to pass to the debounce function. See
- * https://lodash.com/docs#debounce for all available options. Defaults to `{}`.
  * @param {object} [options.containerStyle] A style object for the `<div>` that will wrap your component.
  * The dimensions of this `div` are what are passed as props to your component. The default style is
  * `{ width: '100%', height: '100%', padding: 0, border: 0 }` which will cause the `div` to fill its
@@ -87,12 +91,14 @@ function defaultGetDimensions(element) {
  */
 module.exports = function Dimensions() {
   var _ref = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-      _ref$getDimensions = _ref.getDimensions,
-      getDimensions = _ref$getDimensions === undefined ? defaultGetDimensions : _ref$getDimensions,
-      _ref$debounce = _ref.debounce,
-      debounce = _ref$debounce === undefined ? 0 : _ref$debounce,
-      _ref$debounceOpts = _ref.debounceOpts,
-      debounceOpts = _ref$debounceOpts === undefined ? {} : _ref$debounceOpts,
+      _ref$getHeight = _ref.getHeight,
+      getHeight = _ref$getHeight === undefined ? defaultGetHeight : _ref$getHeight,
+      _ref$getWidth = _ref.getWidth,
+      getWidth = _ref$getWidth === undefined ? defaultGetWidth : _ref$getWidth,
+      _ref$containerStyle = _ref.containerStyle,
+      containerStyle = _ref$containerStyle === undefined ? defaultContainerStyle : _ref$containerStyle,
+      _ref$className = _ref.className,
+      className = _ref$className === undefined ? null : _ref$className,
       _ref$elementResize = _ref.elementResize,
       elementResize = _ref$elementResize === undefined ? false : _ref$elementResize;
 
@@ -111,16 +117,15 @@ module.exports = function Dimensions() {
           args[_key] = arguments[_key];
         }
 
-        return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref2 = DimensionsHOC.__proto__ || Object.getPrototypeOf(DimensionsHOC)).call.apply(_ref2, [this].concat(args))), _this), _this.state = {}, _this.updateDimensionsImmediate = function () {
-          var dimensions = getDimensions(_this._parent);
+        return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref2 = DimensionsHOC.__proto__ || Object.getPrototypeOf(DimensionsHOC)).call.apply(_ref2, [this].concat(args))), _this), _this.state = {}, _this.updateDimensions = function () {
+          var container = _this.refs.container;
+          var containerWidth = getWidth(container);
+          var containerHeight = getHeight(container);
 
-          if (dimensions[0] !== _this.state.containerWidth || dimensions[1] !== _this.state.containerHeight) {
-            _this.setState({
-              containerWidth: dimensions[0],
-              containerHeight: dimensions[1]
-            });
+          if (containerWidth !== _this.state.containerWidth || containerHeight !== _this.state.containerHeight) {
+            _this.setState({ containerWidth: containerWidth, containerHeight: containerHeight });
           }
-        }, _this.updateDimensions = debounce === 0 ? _this.updateDimensionsImmediate : _debounce(_this.updateDimensionsImmediate, debounce, debounceOpts), _this.onResize = function () {
+        }, _this.onResize = function () {
           if (_this.rqf) return;
           _this.rqf = _this.getWindow().requestAnimationFrame(function () {
             _this.rqf = null;
@@ -134,11 +139,6 @@ module.exports = function Dimensions() {
 
       // Using arrow functions and ES7 Class properties to autobind
       // http://babeljs.io/blog/2015/06/07/react-on-es6-plus/#arrow-functions
-
-      // Immediate updateDimensions callback with no debounce
-
-
-      // Optionally-debounced updateDimensions callback
 
 
       _createClass(DimensionsHOC, [{
@@ -156,16 +156,15 @@ module.exports = function Dimensions() {
       }, {
         key: 'componentDidMount',
         value: function componentDidMount() {
-          if (!this.refs.wrapper) {
-            throw new Error('Cannot find wrapper div');
+          if (!this.refs.container) {
+            throw new Error('Cannot find container div');
           }
-          this._parent = this.refs.wrapper.parentNode;
-          this.updateDimensionsImmediate();
+          this.updateDimensions();
           if (elementResize) {
             // Experimental: `element-resize-event` fires when an element resizes.
             // It attaches its own window resize listener and also uses
             // requestAnimationFrame, so we can just call `this.updateDimensions`.
-            onElementResize(this._parent, this.updateDimensions);
+            onElementResize(this.refs.container, this.updateDimensions);
           } else {
             this.getWindow().addEventListener('resize', this.onResize, false);
           }
@@ -174,8 +173,6 @@ module.exports = function Dimensions() {
         key: 'componentWillUnmount',
         value: function componentWillUnmount() {
           this.getWindow().removeEventListener('resize', this.onResize);
-          // TODO: remote element-resize-event listener.
-          // pending https://github.com/KyleAMathews/element-resize-event/issues/2
         }
 
         /**
@@ -189,7 +186,7 @@ module.exports = function Dimensions() {
       }, {
         key: 'getWrappedInstance',
         value: function getWrappedInstance() {
-          return this.refs.wrappedInstance;
+          this.refs.wrappedInstance;
         }
       }, {
         key: 'render',
@@ -197,19 +194,9 @@ module.exports = function Dimensions() {
           var _state = this.state,
               containerWidth = _state.containerWidth,
               containerHeight = _state.containerHeight;
-
-          if (this._parent && !containerWidth && !containerHeight) {
-            // only trigger a warning about the wrapper div if we already have a reference to it
-            // console.warn('Wrapper div has no height or width, try overriding style with `containerStyle` option')
-          }
-          var wrapperStyle = {
-            overflow: 'visible',
-            height: 0,
-            width: 0
-          };
           return React.createElement(
             'div',
-            { style: wrapperStyle, ref: 'wrapper' },
+            { className: className, style: containerStyle, ref: 'container' },
             (containerWidth || containerHeight) && React.createElement(ComposedComponent, _extends({}, this.state, this.props, {
               updateDimensions: this.updateDimensions,
               ref: 'wrappedInstance'
